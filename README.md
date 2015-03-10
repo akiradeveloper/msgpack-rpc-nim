@@ -2,9 +2,9 @@
 
 MessagePack-RPC implementation for Nim
 
-[![Build Status](https://travis-ci.org/akiradeveloper/msgpack-nim-rpc.svg?branch=master)](https://travis-ci.org/akiradeveloper/msgpack-nim-rpc)
+[![Build Status](https://travis-ci.org/akiradeveloper/msgpack-rpc-nim.svg?branch=master)](https://travis-ci.org/akiradeveloper/msgpack-rpc-nim)
 
-API: https://rawgit.com/akiradeveloper/msgpack-nim-nim/master/msgpack\_rpc.html
+API: https://rawgit.com/akiradeveloper/msgpack-nim-nim/master/msgpack_rpc.html
 
 ## Example
 
