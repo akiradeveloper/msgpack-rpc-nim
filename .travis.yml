@@ -7,9 +7,10 @@ env:
 install:
   - uname -a
   - git clone -b $BRANCH git://github.com/Araq/Nim.git; cd Nim; git clone -b $BRANCH --depth 1 git://github.com/nim-lang/csources; cd csources && sh build.sh; cd ..; bin/nim c koch; ./koch boot -d:release; cd ..
+  - export PATH=`pwd`/Nim/bin:$PATH
+  - git clone https://github.com/nim-lang/nimble.git; cd nimble; nim c -r src/nimble install; cd ..
   - nimble install
 before_script:
-  - export PATH=`pwd`/Nim/bin:$PATH
 script:
   - set -e
   - set -x
