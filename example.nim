@@ -34,6 +34,6 @@ when isMainModule:
     let fut1 = client.call(id=0, "double", @[PFixNum(100)])
     echo "call end"
     let ret1: Msg = waitFor(fut1)
-    echo "ret: ", unwrapInt(ret1)
+    assert(unwrapInt(ret1) == 200)
   else:
     assert(false)
