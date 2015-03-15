@@ -12,7 +12,10 @@ when isMainModule:
   assert(len(cl) == 1)
   let t = cl[0] # server or client
   if t == "server":
-    let sock = newAsyncSocket()
+    # Note:
+    # We need unbuffered sockets for both client and server.
+    # The reason is not found.
+    let sock = newAsyncSocket(buffered=false)
     defer: sock.close()
     sock.bindAddr(address=addrUse, port=portUse)
     sock.listen()
@@ -23,7 +26,7 @@ when isMainModule:
     asyncCheck server.run
     runForever()
   elif t == "client":
-    let sock = newAsyncSocket()
+    let sock = newAsyncSocket(buffered=false)
     defer: sock.close()
     let client = mkClient(sock)
     waitFor sock.connect(address=addrUse, port=portUse)
