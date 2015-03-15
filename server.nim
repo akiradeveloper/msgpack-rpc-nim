@@ -4,7 +4,7 @@ import asyncdispatch
 import asyncnet
 import rawsockets
 
-proc run(sock: AsyncSocket) {.async.} =
+proc run(sock: AsyncSocket): Future[void] {.async.} =
   while true:
     let conn: AsyncSocket = await sock.accept
     echo conn.isClosed #=> false
