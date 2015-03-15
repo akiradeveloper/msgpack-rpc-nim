@@ -4,6 +4,7 @@ example: msgpack_rpc.nim example.nim
 test:
 	nim c example
 	./example server &
+	sleep 5
 	./example client
 	kill -9 `pidof example`
 
