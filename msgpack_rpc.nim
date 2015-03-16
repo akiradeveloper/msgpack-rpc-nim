@@ -50,9 +50,9 @@ proc handleRequest(server: Server, conn: AsyncSocket): Future[void] {.async.} =
   let typ = unwrapInt(inMsg[0])
   case typ:
   of 0: # request: [0, id, method, params]
-    # let id = unwrapInt(inMsg[1])
+    let id = unwrapInt(inMsg[1])
     let name = unwrapStr(inMsg[2])
-    echo name
+    echo "id ", id
 
     # respose: [1, id, error, retval]
     let outMsg: Msg = try:
@@ -64,13 +64,13 @@ proc handleRequest(server: Server, conn: AsyncSocket): Future[void] {.async.} =
       echo "error"
       FixArray(@[PFixNum(1), inMsg[1], (-1).toMsg, Nil])
 
-    echo "ack start"
+    echo "ack start ", id
     echo outMsg
     var st = newStringStream()
     st.pack(outMsg)
     # st.setPosition(0)
     await conn.send(st.data)
-    echo "ack end"
+    echo "ack end ", id
   of 2: # notify: [2, method, params]
     let name = unwrapStr(inMsg[1])
     try:
@@ -167,12 +167,12 @@ proc destroy(pool: SocketPool) {.override.} =
     sock.close()
   
 proc size*(pool: var SocketPool): int =
-  pool.lock.acquire
+  # pool.lock.acquire
   result = len(pool.free) + len(pool.used)
-  pool.lock.release
+  # pool.lock.release
 
 proc acquire(pool: var SocketPool): AsyncSocket =
-  pool.lock.acquire
+  # pool.lock.acquire
   if len(pool.free) == 0:
     pool.free.add(pool.allocFn())
   assert(len(pool.free) > 0)
@@ -180,14 +180,14 @@ proc acquire(pool: var SocketPool): AsyncSocket =
   result = pool.free[i]
   pool.free.delete(i)
   pool.used.add(result)
-  pool.lock.release
+  # pool.lock.release
  
 proc release(pool: var SocketPool, sock: AsyncSocket) =
-  pool.lock.acquire
+  # pool.lock.acquire
   let i = pool.used.find(sock)
   pool.used.delete(i)
   pool.free.add(sock)
-  pool.lock.release
+  # pool.lock.release
 
 type MultiFuture* = ref object
   lock: TLock

@@ -32,9 +32,7 @@ when isMainModule:
       waitFor result.connect(address=addrUse, port=portUse)
       echo "wait end")
     var mfut = newMultiFuture(pool)
-
-    # let N = 99
-    let N = 1
+    let N = 0 # FIXME N>3 blocks
     for i in 0..N:
       mfut.add("double", @[wrap(i)])
     let ret: seq[Msg] = mfut.join
