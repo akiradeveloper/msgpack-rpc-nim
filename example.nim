@@ -26,14 +26,21 @@ when isMainModule:
     asyncCheck server.run
     runForever()
   elif t == "client":
-    let sock = newAsyncSocket(buffered=false)
-    defer: sock.close()
-    let client = newClient(sock)
-    waitFor sock.connect(address=addrUse, port=portUse)
-    echo "call start"
-    let fut1 = client.call(id=0, "double", @[PFixNum(100)])
-    echo "call end"
-    let ret1: Msg = waitFor(fut1)
-    assert(unwrapInt(ret1) == 200)
+    var pool = newSocketPool(proc (): AsyncSocket =
+      result = newAsyncSocket(buffered=false)
+      echo "wait start"
+      waitFor result.connect(address=addrUse, port=portUse)
+      echo "wait end")
+    var mfut = newMultiFuture(pool)
+
+    # let N = 99
+    let N = 1
+    for i in 0..N:
+      mfut.add("double", @[wrap(i)])
+    let ret: seq[Msg] = mfut.join
+    for i in 0..N:
+      let e = unwrapInt(ret[i])
+      echo e
+      assert(e == (i * 2))
   else:
     assert(false)

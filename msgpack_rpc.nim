@@ -101,6 +101,7 @@ proc newClient*(sock: AsyncSocket): Client =
 
 # TODO varargs (illegal capture?)
 proc call*(cli: Client, id: int, name: string, args: seq[Msg]): Future[Msg] {.async.} =
+  echo "call start"
   let reqMsg: Msg = FixArray(@[PFixNum(0), wrap(id), wrap(name), wrap(args)])
   echo reqMsg
   var st = newStringStream()
@@ -131,6 +132,7 @@ proc call*(cli: Client, id: int, name: string, args: seq[Msg]): Future[Msg] {.as
       echo "server replies with bad response type ", typ
       assert(false)
       Nil
+  echo "call end"
 
 proc notify(cli: Client, fun: Msg, args: openArray[Msg]): Future[void] {.async.} =
   discard
@@ -143,13 +145,13 @@ import locks
 
 type SocketAllocFn* = proc (): AsyncSocket
 
-type SocketPool = ref object
+type SocketPool* = ref object
   lock: TLock
   allocFn: SocketAllocFn
   free: seq[AsyncSocket]
   used: seq[AsyncSocket]
 
-proc newSocketPool(f: SocketAllocFn): SocketPool =
+proc newSocketPool*(f: SocketAllocFn): SocketPool =
   result = SocketPool(
     free: newSeq[AsyncSocket](),
     used: newSeq[AsyncSocket](),
@@ -158,12 +160,13 @@ proc newSocketPool(f: SocketAllocFn): SocketPool =
   initLock(result.lock)
 
 proc destroy(pool: SocketPool) {.override.} =
+  echo "destroy pool"
   assert(len(pool.used) == 0)
   deinitLock(pool.lock)
   for sock in pool.free:
     sock.close()
   
-proc size(pool: var SocketPool): int =
+proc size*(pool: var SocketPool): int =
   pool.lock.acquire
   result = len(pool.free) + len(pool.used)
   pool.lock.release
@@ -193,9 +196,14 @@ type MultiFuture* = ref object
   pool: SocketPool
 
 proc join*(mfut: MultiFuture): seq[Msg] =
+  echo "join"
   ## Wait for all requests and the results in-order.
-  for fut in mfut.futs:
-    result.add(waitFor(fut))
+  var s = newSeq[Msg](len(mfut.futs))
+  for i, fut in mfut.futs:
+    assert(fut != nil)
+    let e: Msg = waitFor(fut)
+    s[i] = e
+  s
 
 proc newMultiFuture*(pool: SocketPool): MultiFuture =
   result = MultiFuture (
@@ -206,21 +214,24 @@ proc newMultiFuture*(pool: SocketPool): MultiFuture =
   initLock(result.lock)
 
 proc destroy(mfut: MultiFuture) {.override.} =
+  echo "destroy multifuture"
   discard mfut.join
   deinitLock(mfut.lock)
 
 proc add*(mfut: MultiFuture, name: string, args: seq[Msg]) =
   ## Add a new future
-  var mfut = mfut # without this, "illegal capture" error
   let sock = mfut.pool.acquire()
   let cli = newClient(sock)
   let fut = cli.call(sock.getFd().int, name, args)
   fut.callback = proc () =
+    echo "callback"
     mfut.lock.acquire
     mfut.finFuts.add(fut.read)
     mfut.lock.release
     mfut.pool.release(sock)
+  assert(fut != nil)
   mfut.futs.add(fut)
+  assert(len(mfut.futs) > 0)
 
 iterator eachResult*(mfut: MultiFuture): Msg =
   ## Make an iterator that generates result in order of completion.
