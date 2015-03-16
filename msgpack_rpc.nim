@@ -23,7 +23,7 @@ type Server* = object
   sock: AsyncSocket
   methods: TableRef[string, RPCMethod]
 
-proc mkServer*(sock: AsyncSocket): Server =
+proc newServer*(sock: AsyncSocket): Server =
   Server(
     sock: sock,
     methods: newTable[string, RPCMethod]()
@@ -96,7 +96,7 @@ proc run*(server: Server) {.async.} =
 type Client = object
   sock: AsyncSocket
 
-proc mkClient*(sock: AsyncSocket): Client =
+proc newClient*(sock: AsyncSocket): Client =
   Client(sock: sock)
 
 # TODO varargs (illegal capture?)
@@ -134,3 +134,97 @@ proc call*(cli: Client, id: int, name: string, args: seq[Msg]): Future[Msg] {.as
 
 proc notify(cli: Client, fun: Msg, args: openArray[Msg]): Future[void] {.async.} =
   discard
+
+# ------------------------------------------------------------------------------
+
+import locks
+
+{.passL: "-lpthread".}
+
+type SocketAllocFn* = proc (): AsyncSocket
+
+type SocketPool = ref object
+  lock: TLock
+  allocFn: SocketAllocFn
+  free: seq[AsyncSocket]
+  used: seq[AsyncSocket]
+
+proc newSocketPool(f: SocketAllocFn): SocketPool =
+  result = SocketPool(
+    free: newSeq[AsyncSocket](),
+    used: newSeq[AsyncSocket](),
+    allocFn: f,
+  )
+  initLock(result.lock)
+
+proc destroy(pool: SocketPool) {.override.} =
+  assert(len(pool.used) == 0)
+  deinitLock(pool.lock)
+  for sock in pool.free:
+    sock.close()
+  
+proc size(pool: var SocketPool): int =
+  pool.lock.acquire
+  result = len(pool.free) + len(pool.used)
+  pool.lock.release
+
+proc acquire(pool: var SocketPool): AsyncSocket =
+  pool.lock.acquire
+  if len(pool.free) == 0:
+    pool.free.add(pool.allocFn())
+  assert(len(pool.free) > 0)
+  let i = high(pool.free)
+  result = pool.free[i]
+  pool.free.delete(i)
+  pool.used.add(result)
+  pool.lock.release
+ 
+proc release(pool: var SocketPool, sock: AsyncSocket) =
+  pool.lock.acquire
+  let i = pool.used.find(sock)
+  pool.used.delete(i)
+  pool.free.add(sock)
+  pool.lock.release
+
+type MultiFuture* = ref object
+  lock: TLock
+  futs: seq[Future[Msg]]
+  finFuts: seq[Msg]
+  pool: SocketPool
+
+proc join*(mfut: MultiFuture): seq[Msg] =
+  ## Wait for all requests and the results in-order.
+  for fut in mfut.futs:
+    result.add(waitFor(fut))
+
+proc newMultiFuture*(pool: SocketPool): MultiFuture =
+  result = MultiFuture (
+    futs: newSeq[Future[Msg]](),
+    finFuts: newSeq[Msg](),
+    pool: pool,
+  )
+  initLock(result.lock)
+
+proc destroy(mfut: MultiFuture) {.override.} =
+  discard mfut.join
+  deinitLock(mfut.lock)
+
+proc add*(mfut: MultiFuture, name: string, args: seq[Msg]) =
+  ## Add a new future
+  var mfut = mfut # without this, "illegal capture" error
+  let sock = mfut.pool.acquire()
+  let cli = newClient(sock)
+  let fut = cli.call(sock.getFd().int, name, args)
+  fut.callback = proc () =
+    mfut.lock.acquire
+    mfut.finFuts.add(fut.read)
+    mfut.lock.release
+    mfut.pool.release(sock)
+  mfut.futs.add(fut)
+
+iterator eachResult*(mfut: MultiFuture): Msg =
+  ## Make an iterator that generates result in order of completion.
+  var i = 0
+  while (len(mfut.finFuts) > i and i < len(mfut.futs)): # FIXME use waitqueue
+    yield mfut.finFuts[i]
+    i += 1

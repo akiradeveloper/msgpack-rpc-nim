@@ -19,7 +19,7 @@ when isMainModule:
     defer: sock.close()
     sock.bindAddr(address=addrUse, port=portUse)
     sock.listen()
-    var server = mkServer(sock)
+    var server = newServer(sock)
     server.addMethod("double", proc (args: openArray[Msg]): Msg =
       let a = unwrapInt(args[0])
       wrap(a * 2))
@@ -28,7 +28,7 @@ when isMainModule:
   elif t == "client":
     let sock = newAsyncSocket(buffered=false)
     defer: sock.close()
-    let client = mkClient(sock)
+    let client = newClient(sock)
     waitFor sock.connect(address=addrUse, port=portUse)
     echo "call start"
     let fut1 = client.call(id=0, "double", @[PFixNum(100)])
