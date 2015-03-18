@@ -1166,6 +1166,12 @@ dt pre > span.Operator ~ span.Identifier, dt pre > span.Operator ~ span.Operator
   methods: TableRef[string, RPCMethod]"><wbr />Server</a></li>
   <li><a class="reference" href="#SocketAllocFn"
     title="SocketAllocFn* = proc (): AsyncSocket"><wbr />Socket<wbr />Alloc<wbr />Fn</a></li>
+  <li><a class="reference" href="#SocketPool"
+    title="SocketPool* = ref object 
+  lock: TLock
+  allocFn: SocketAllocFn
+  free: seq[AsyncSocket]
+  used: seq[AsyncSocket]"><wbr />Socket<wbr />Pool</a></li>
   <li><a class="reference" href="#MultiFuture"
     title="MultiFuture* = ref object 
   lock: TLock
@@ -1188,6 +1194,10 @@ dt pre > span.Operator ~ span.Identifier, dt pre > span.Operator ~ span.Operator
     title="newClient*(sock: AsyncSocket): Client"><wbr />new<wbr />Client</a></li>
   <li><a class="reference" href="#call,Client,int,string,seq[Msg]"
     title="call*(cli: Client; id: int; name: string; args: seq[Msg]): Future[Msg]"><wbr />call</a></li>
+  <li><a class="reference" href="#newSocketPool,SocketAllocFn"
+    title="newSocketPool*(f: SocketAllocFn): SocketPool"><wbr />new<wbr />Socket<wbr />Pool</a></li>
+  <li><a class="reference" href="#size,SocketPool"
+    title="size*(pool: var SocketPool): int"><wbr />size</a></li>
   <li><a class="reference" href="#join,MultiFuture"
     title="join*(mfut: MultiFuture): seq[Msg]"><wbr />join</a></li>
   <li><a class="reference" href="#newMultiFuture,SocketPool"
@@ -1237,6 +1247,16 @@ dt pre > span.Operator ~ span.Identifier, dt pre > span.Operator ~ span.Operator
 
 
 </dd>
+<dt id="SocketPool"><a name="SocketPool"></a><pre><span class="Identifier">SocketPool</span><span class="Operator">*</span> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> 
+  <span class="Identifier">lock</span><span class="Other">:</span> <span class="Identifier">TLock</span>
+  <span class="Identifier">allocFn</span><span class="Other">:</span> <span class="Identifier">SocketAllocFn</span>
+  <span class="Identifier">free</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">AsyncSocket</span><span class="Other">]</span>
+  <span class="Identifier">used</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">AsyncSocket</span><span class="Other">]</span>
+</pre></dt>
+<dd>
+
+
+</dd>
 <dt id="MultiFuture"><a name="MultiFuture"></a><pre><span class="Identifier">MultiFuture</span><span class="Operator">*</span> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span> 
   <span class="Identifier">lock</span><span class="Other">:</span> <span class="Identifier">TLock</span>
   <span class="Identifier">futs</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">Msg</span><span class="Other">]</span><span class="Other">]</span>
@@ -1278,6 +1298,16 @@ dt pre > span.Operator ~ span.Identifier, dt pre > span.Operator ~ span.Operator
 
 
 </dd>
+<dt id="newSocketPool"><a name="newSocketPool,SocketAllocFn"></a><pre><span class="Keyword">proc</span> <span class="Identifier">newSocketPool</span><span class="Operator">*</span><span class="Other">(</span><span class="Identifier">f</span><span class="Other">:</span> <span class="Identifier">SocketAllocFn</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">SocketPool</span></pre></dt>
+<dd>
+
+
+</dd>
+<dt id="size"><a name="size,SocketPool"></a><pre><span class="Keyword">proc</span> <span class="Identifier">size</span><span class="Operator">*</span><span class="Other">(</span><span class="Identifier">pool</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">SocketPool</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+
+
+</dd>
 <dt id="join"><a name="join,MultiFuture"></a><pre><span class="Keyword">proc</span> <span class="Identifier">join</span><span class="Operator">*</span><span class="Other">(</span><span class="Identifier">mfut</span><span class="Other">:</span> <span class="Identifier">MultiFuture</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">Msg</span><span class="Other">]</span></pre></dt>
 <dd>
 Wait for all requests and the results in-order.
@@ -1313,7 +1343,7 @@ Make an iterator that generates result in order of completion.
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small>Made with Nim. Generated: 2015-03-16 19:44:01 UTC</small>
+        <small>Made with Nim. Generated: 2015-03-18 11:20:40 UTC</small>
       </div>
     </div>
   </div>
